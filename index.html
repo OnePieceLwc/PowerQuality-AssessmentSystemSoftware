@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>电能质量评估系统</title>
+<style>
+body {
+  background-image: url("电能质量评估系统.png"); /* 使用你的背景图片 */
+  background-size: cover;
+  font-family: sans-serif;
+}
+.container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 20px;
+}
+.mode-selector {
+  display: flex;
+  margin-bottom: 10px;
+}
+.mode-selector button {
+  margin: 5px;
+  padding: 10px 20px;
+  border: none;
+  border-radius: 5px;
+  background-color: #4CAF50;
+  color: white;
+  cursor: pointer;
+}
+.evaluation-items {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  margin-top: 10px;
+  display: none;
+}
+.evaluation-items button {
+  margin: 5px;
+  padding: 10px 20px;
+  border: none;
+  border-radius: 5px;
+  background-color: #2196F3;
+  color: white;
+  cursor: pointer;
+}
+.input-window {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 10px;
+  display: none;
+}
+.input-window label {
+  margin-bottom: 5px;
+}
+.input-window input[type="text"] {
+  margin-bottom: 10px;
+  padding: 5px;
+  border: 1px solid #ccc;
+  border-radius: 3px;
+}
+.result-window {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 10px;
+  display: none;
+}
+.result-window p {
+  margin-bottom: 5px;
+}
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>电能质量评估系统</h1>
+
+  <!-- 模式选择 -->
+  <div class="mode-selector">
+    <button onclick="showEvaluationItems('光伏发电模式')">光伏发电模式</button>
+    <button onclick="showEvaluationItems('并网模式')">并网模式</button>
+    <button onclick="showEvaluationItems('柴油发电模式')">柴油发电模式</button>
+  </div>
+
+  <!-- 评估指标选择 -->
+  <div id="evaluationItems" class="evaluation-items">
+    <!-- 评估指标按钮 -->
+  </div>
+
+  <!-- 输入窗口 -->
+  <div id="inputWindow" class="input-window">
+    <h2 id="inputWindowTitle"></h2>
+    <div id="inputFields"></div>
+    <button onclick="calculateResult()">计算</button>
+  </div>
+
+  <!-- 结果显示 -->
+  <div id="resultWindow" class="result-window">
+    <p id="resultValue"></p>
+    <p id="resultJudgment"></p>
+  </div>
+</div>
+
+<script>
+function showEvaluationItems(mode) {
+  var evaluationItems = document.getElementById("evaluationItems");
+  evaluationItems.innerHTML = ''; // 清空之前的内容
+  evaluationItems.style.display = 'flex'; // 显示评估指标
+
+  var items = [];
+  if (mode === "光伏发电模式") {
+    items = ["电压偏差", "频率偏差", "电压波动"];
+  } else if (mode === "并网模式") {
+    items = ["光伏测电压偏差", "并网侧电压偏差", "系统频率偏差",
+             "光伏侧电压波动", "并网侧电压波动", "电网三相电压不平衡度"];
+  } else if (mode === "柴油发电模式") {
+    items = ["电压偏差", "频率偏差", "电压波动"];
+  }
+
+  for (var i = 0; i < items.length; i++) {
+    var button = document.createElement('button');
+    button.textContent = items[i];
+    button.onclick = function() {
+      showInputWindow(this.textContent); // 使用 this 引用按钮本身
+    };
+    evaluationItems.appendChild(button);
+  }
+}
+
+function showInputWindow(item) {
+  document.getElementById("inputWindow").style.display = "flex";
+  document.getElementById("inputWindowTitle").textContent = item;
+
+  // 清空输入框
+  var inputFields = document.getElementById("inputFields");
+  inputFields.innerHTML = '';
+
+  // 根据指标设置输入项
+  var inputLabels = {
+    "电压偏差": ["输入参数"],
+    "频率偏差": ["输入参数"],
+    "光伏测电压偏差": ["输入参数"],
+    "系统频率偏差": ["输入参数"],
+    "电压波动": ["最大电压 (V)", "最小电压 (V)"],
+    "光伏侧电压波动": ["最大电压 (V)", "最小电压 (V)"],
+    "并网侧电压偏差": ["UA (V)", "UB (V)", "UC (V)"],
+    "并网侧电压波动": ["UA (V)", "UB (V)", "UC (V)"],
+    "电网三相电压不平衡度": ["UA (V)", "UB (V)", "UC (V)", "相位A (度)", "相位B (度)", "相位C (度)"]
+  };
+
+  if (inputLabels.hasOwnProperty(item)) {
+    var labels = inputLabels[item];
+    for (var i = 0; i < labels.length; i++) {
+      var label = document.createElement('label');
+      var input = document.createElement('input');
+      label.textContent = labels[i] + ":";
+      input.type = "text";
+      input.placeholder = "请输入参数";
+      inputFields.appendChild(label);
+      inputFields.appendChild(input);
+    }
+  }
+}
+
+function calculateResult() {
+  var inputValues = [];
+  var inputEntries = document.getElementsByTagName('input');
+  for (var i = 0; i < inputEntries.length; i++) {
+    inputValues.push(parseFloat(inputEntries[i].value));
+  }
+
+  var result = 0;
+  var item = document.getElementById("inputWindowTitle").textContent;
+
+  // 添加计算逻辑，例如：
+  if (item == "电压偏差") {
+    result = calculate_voltage_deviation(inputValues[0], 800);
+  } else if (item == "频率偏差") {
+    result = calculate_frequency_deviation(inputValues[0], 50);
+  } else if (item == "电压波动") {
+    result = calculate_voltage_fluctuation(inputValues[0], inputValues[1], 800);
+  } else if (item == "光伏测电压偏差") {
+    result = calculate_voltage_deviation(inputValues[0], 800);
+  } else if (item == "并网侧电压偏差") {
+    result = calculate_grid_voltage_deviation(inputValues[0], inputValues[1], inputValues[2]);
+  } else if (item == "系统频率偏差") {
+    result = calculate_frequency_deviation(inputValues[0], 50);
+  } else if (item == "光伏侧电压波动") {
+    result = calculate_voltage_fluctuation(inputValues[0], inputValues[1], 800);
+  } else if (item == "并网侧电压波动") {
+    result = calculate_grid_voltage_fluctuation(inputValues[0], inputValues[1], inputValues[2]);
+  } else if (item == "电网三相电压不平衡度") {
+    result = calculate_voltage_unbalance(inputValues[0], inputValues[1], inputValues[2],
+                                        inputValues[3], inputValues[4], inputValues[5]);
+  }
+
+  // 判断合格/不合格
+  var judgment = judge_result(result, -0.1, 0.07); // 根据指标设置判断标准
+
+  // 显示结果
+  document.getElementById("resultWindow").style.display = "flex";
+  document.getElementById("resultValue").textContent = "计算结果：" + result;
+  document.getElementById("resultJudgment").textContent = "判断结果：" + judgment;
+}
+
+// JavaScript 函数实现 Python 代码中定义的计算函数
+function calculate_voltage_deviation(voltage, nominal_voltage) {
+  var deviation = (voltage - nominal_voltage) / nominal_voltage;
+  return deviation;
+}
+
+function calculate_frequency_deviation(frequency, nominal_frequency) {
+  var deviation = frequency - nominal_frequency;
+  return deviation;
+}
+
+function calculate_voltage_fluctuation(u_max, u_min, nominal_voltage) {
+  var fluctuation = (u_max - u_min) / nominal_voltage;
+  return fluctuation;
+}
+
+function calculate_grid_voltage_deviation(ua, ub, uc) {
+  var u = Math.sqrt((ua * ua + ub * ub + uc * uc) / 3);
+  var deviation = (u - 380) / 380;
+  return deviation;
+}
+
+function calculate_grid_voltage_fluctuation(ua, ub, uc) {
+  return fluctuation;
+}
+
+function calculate_voltage_unbalance(ua, ub, uc, phaA, phaB, phaC) {
+  // 将角度转换为弧度
+  phaA = phaA * Math.PI / 180;
+  phaB = phaB * Math.PI / 180;
+  phaC = phaC * Math.PI / 180;
+
+  var complex_UA = new Complex(ua * Math.cos(phaA), ua * Math.sin(phaA));
+  var complex_UB = new Complex(ub * Math.cos(phaB), ub * Math.sin(phaB));
+  var complex_UC = new Complex(uc * Math.cos(phaC), uc * Math.sin(phaC));
+
+  // 计算正序、负序、零序电压
+  var complex_U1 = complex_UA.sub(complex_UB.add(complex_UC).mul(0.5))
+    .sub(new Complex(0, complex_UB.im.sub(complex_UC.im)).mul(0.86602))
+    .add(new Complex(complex_UB.re.sub(complex_UC.re), 0).mul(0.86602).mul(new Complex(0, 1)));
+  var complex_U2 = complex_UA.sub(complex_UB.add(complex_UC).mul(0.5))
+    .add(new Complex(0, complex_UB.im.sub(complex_UC.im)).mul(0.86602))
+    .sub(new Complex(complex_UC.re.sub(complex_UB.re), 0).mul(0.86602).mul(new Complex(0, 1)));
+  var complex_U0 = complex_UA.add(complex_UB).add(complex_UC).div(3);
+
+  // 计算U2/U1
+  var complex_U2_U1 = complex_U2.div(complex_U1);
+
+  // 返回不平衡度
+  return Math.sqrt(complex_U2_U1.re * complex_U2_U1.re + complex_U2_U1.im * complex_U2_U1.im);
+}
+
+function judge_result(deviation, lower_limit, upper_limit) {
+  if (isNaN(deviation)) {
+    return "无法计算";
+  } else if (lower_limit <= deviation && deviation <= upper_limit) {
+    return "合格";
+  } else {
+    return "不合格";
+  }
+}
+
+// 复数类
+function Complex(re, im) {
+  this.re = re;
+  this.im = im;
+}
+
+Complex.prototype.add = function(other) {
+  return new Complex(this.re + other.re, this.im + other.im);
+};
+
+Complex.prototype.sub = function(other) {
+  return new Complex(this.re - other.re, this.im - other.im);
+};
+
+Complex.prototype.mul = function(other) {
+  return new Complex(this.re * other.re - this.im * other.im,
+                    this.re * other.im + this.im * other.re);
+};
+
+Complex.prototype.div = function(other) {
+  var denominator = other.re * other.re + other.im * other.im;
+  return new Complex((this.re * other.re + this.im * other.im) / denominator,
+                    (this.im * other.re - this.re * other.im) / denominator);
+};
+</script>
+</body>
+</html>
