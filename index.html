@@ -172,7 +172,7 @@ function calculateResult() {
   var result = 0;
   var item = document.getElementById("inputWindowTitle").textContent;
 
-  // 添加计算逻辑
+  // 添加计算逻辑，例如：
   if (item == "电压偏差") {
     result = calculate_voltage_deviation(inputValues[0], 800);
   } else if (item == "频率偏差") {
@@ -195,11 +195,11 @@ function calculateResult() {
   }
 
   // 判断合格/不合格
-  var judgment = judge_result(result, -0.04, 0.04); // 根据指标设置判断标准
+  var judgment = judge_result(result, -0.1, 0.07); // 根据指标设置判断标准
 
   // 显示结果
   document.getElementById("resultWindow").style.display = "flex";
-  document.getElementById("resultValue").textContent = "计算结果：" + result.toFixed(7);
+  document.getElementById("resultValue").textContent = "计算结果：" + result;
   document.getElementById("resultJudgment").textContent = "判断结果：" + judgment;
 }
 
@@ -225,34 +225,34 @@ function calculate_grid_voltage_deviation(ua, ub, uc) {
   return deviation;
 }
 
+function calculate_grid_voltage_fluctuation(ua, ub, uc) {
+  return fluctuation;
+}
+
 function calculate_voltage_unbalance(ua, ub, uc, phaA, phaB, phaC) {
   // 将角度转换为弧度
   phaA = phaA * Math.PI / 180;
   phaB = phaB * Math.PI / 180;
   phaC = phaC * Math.PI / 180;
 
-  // 计算三相电压的复数形式
-  var complex_UA = { re: ua * Math.cos(phaA), im: ua * Math.sin(phaA) };
-  var complex_UB = { re: ub * Math.cos(phaB), im: ub * Math.sin(phaB) };
-  var complex_UC = { re: uc * Math.cos(phaC), im: uc * Math.sin(phaC) };
+  var complex_UA = new Complex(ua * Math.cos(phaA), ua * Math.sin(phaA));
+  var complex_UB = new Complex(ub * Math.cos(phaB), ub * Math.sin(phaB));
+  var complex_UC = new Complex(uc * Math.cos(phaC), uc * Math.sin(phaC));
 
-  // 计算正序电压 U1
-  var complex_U1 = {
-    re: (complex_UA.re + complex_UB.re + complex_UC.re) / 3,
-    im: (complex_UA.im + complex_UB.im + complex_UC.im) / 3
-  };
+  // 计算正序、负序、零序电压
+  var complex_U1 = complex_UA.sub(complex_UB.add(complex_UC).mul(0.5))
+    .sub(new Complex(0, complex_UB.im.sub(complex_UC.im)).mul(0.86602))
+    .add(new Complex(complex_UB.re.sub(complex_UC.re), 0).mul(0.86602).mul(new Complex(0, 1)));
+  var complex_U2 = complex_UA.sub(complex_UB.add(complex_UC).mul(0.5))
+    .add(new Complex(0, complex_UB.im.sub(complex_UC.im)).mul(0.86602))
+    .sub(new Complex(complex_UC.re.sub(complex_UB.re), 0).mul(0.86602).mul(new Complex(0, 1)));
+  var complex_U0 = complex_UA.add(complex_UB).add(complex_UC).div(3);
 
-  // 计算负序电压 U2
-  var complex_U2 = {
-    re: (complex_UA.re - complex_UB.re - complex_UC.re) / 3,
-    im: (complex_UA.im - complex_UB.im - complex_UC.im) / 3
-  };
+  // 计算U2/U1
+  var complex_U2_U1 = complex_U2.div(complex_U1);
 
-  // 计算不平衡度
-  var unbalance = Math.sqrt(complex_U2.re * complex_U2.re + complex_U2.im * complex_U2.im) /
-                  Math.sqrt(complex_U1.re * complex_U1.re + complex_U1.im * complex_U1.im);
-
-  return unbalance;
+  // 返回不平衡度
+  return Math.sqrt(complex_U2_U1.re * complex_U2_U1.re + complex_U2_U1.im * complex_U2_U1.im);
 }
 
 function judge_result(deviation, lower_limit, upper_limit) {
@@ -264,6 +264,31 @@ function judge_result(deviation, lower_limit, upper_limit) {
     return "不合格";
   }
 }
+
+// 复数类
+function Complex(re, im) {
+  this.re = re;
+  this.im = im;
+}
+
+Complex.prototype.add = function(other) {
+  return new Complex(this.re + other.re, this.im + other.im);
+};
+
+Complex.prototype.sub = function(other) {
+  return new Complex(this.re - other.re, this.im - other.im);
+};
+
+Complex.prototype.mul = function(other) {
+  return new Complex(this.re * other.re - this.im * other.im,
+                    this.re * other.im + this.im * other.re);
+};
+
+Complex.prototype.div = function(other) {
+  var denominator = other.re * other.re + other.im * other.im;
+  return new Complex((this.re * other.re + this.im * other.im) / denominator,
+                    (this.im * other.re - this.re * other.im) / denominator);
+};
 </script>
 </body>
 </html>
